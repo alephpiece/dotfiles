@@ -10,6 +10,13 @@ set encoding=utf-8
 set hidden                  " allow switching buffers without saving
 set history=1000
 
+" ── Persistent undo ───────────────────────────────────────────────────────────
+set undofile
+set undodir=~/.vim/undodir
+if !isdirectory($HOME . '/.vim/undodir')
+  call mkdir($HOME . '/.vim/undodir', 'p')
+endif
+
 " ── UI ────────────────────────────────────────────────────────────────────────
 set number                  " line numbers
 set wildmenu                " command completion
