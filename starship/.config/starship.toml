@@ -1,0 +1,8 @@
+[username]
+format = "[$user]($style)"
+
+[hostname]
+ssh_only = false
+format = "[@$hostname]($style) in "
+style = "bold green"
+disabled = false
