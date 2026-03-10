@@ -6,8 +6,8 @@ DOTFILES_DIR="$HOME/.dotfiles"
 
 # ── Versions ──────────────────────────────────────────────────────────────────
 STARSHIP_VER=1.24.2
-FD_VER=10.3.0
-RG_VER=14.1.1
+FD_VER=10.4.2
+RG_VER=15.1.0
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 log() { echo ">>> $*"; }
@@ -76,8 +76,9 @@ if $DO_BIN; then
   ok "fzf"
 
   # 5. fd ──────────────────────────────────────────────────────────────────────
-  if ! command -v fd &>/dev/null \
-      || [[ "$(fd --version | awk '{print $2}')" != "${FD_VER}" ]]; then
+  _fd_cur=""
+  command -v fd &>/dev/null && _fd_cur=$(fd --version | awk '{print $2}')
+  if [[ -z "$_fd_cur" ]] || dpkg --compare-versions "$_fd_cur" lt "$FD_VER"; then
     log "Installing fd ${FD_VER}..."
     curl -fL --progress-bar \
       "https://github.com/sharkdp/fd/releases/download/v${FD_VER}/fd_${FD_VER}_amd64.deb" \
@@ -86,21 +87,26 @@ if $DO_BIN; then
     mkdir -p ~/.local/share/bash-completion/completions
     fd --gen-completions bash > ~/.local/share/bash-completion/completions/fd
     ok "fd"
-  else
+  elif [[ "$_fd_cur" == "$FD_VER" ]]; then
     ok "fd already up-to-date (${FD_VER})"
+  else
+    ok "fd already newer (${_fd_cur}), skipping"
   fi
 
   # 6. ripgrep ─────────────────────────────────────────────────────────────────
-  if ! command -v rg &>/dev/null \
-      || [[ "$(rg --version | head -1 | awk '{print $2}')" != "${RG_VER}" ]]; then
+  _rg_cur=""
+  command -v rg &>/dev/null && _rg_cur=$(rg --version | head -1 | awk '{print $2}')
+  if [[ -z "$_rg_cur" ]] || dpkg --compare-versions "$_rg_cur" lt "$RG_VER"; then
     log "Installing ripgrep ${RG_VER}..."
     curl -fL --progress-bar \
       "https://github.com/BurntSushi/ripgrep/releases/download/${RG_VER}/ripgrep_${RG_VER}-1_amd64.deb" \
       -o /tmp/ripgrep.deb
     sudo apt-get install -y /tmp/ripgrep.deb
     ok "ripgrep"
-  else
+  elif [[ "$_rg_cur" == "$RG_VER" ]]; then
     ok "ripgrep already up-to-date (${RG_VER})"
+  else
+    ok "ripgrep already newer (${_rg_cur}), skipping"
   fi
 
   # 7. vim-plug ────────────────────────────────────────────────────────────────
