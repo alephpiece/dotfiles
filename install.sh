@@ -39,10 +39,20 @@ esac
 if $DO_BIN; then
 
   # 1. Base tools ──────────────────────────────────────────────────────────────
-  log "Installing base tools..."
-  sudo apt-get update -q
-  sudo apt-get install -y tmux less curl git stow python3-pip
-  ok "Base tools"
+  _base_pkgs=(tmux less curl git stow python3-pip)
+  _missing=()
+  for pkg in "${_base_pkgs[@]}"; do
+    dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed" || _missing+=("$pkg")
+  done
+
+  if (( ${#_missing[@]} > 0 )); then
+    log "Installing base tools: ${_missing[*]}..."
+    sudo apt-get update -q
+    sudo apt-get install -y "${_missing[@]}"
+    ok "Base tools"
+  else
+    ok "Base tools already installed"
+  fi
 
   # 2. Starship ────────────────────────────────────────────────────────────────
   if ! command -v starship &>/dev/null \
