@@ -70,8 +70,9 @@ if $DO_BIN; then
   # 3. pipx ────────────────────────────────────────────────────────────────────
   if ! command -v pipx &>/dev/null; then
     log "Installing pipx..."
-    pip3 install --user pipx
-    ~/.local/bin/pipx ensurepath
+    sudo apt-get update -q
+    sudo apt-get install -y pipx
+    pipx ensurepath
     ok "pipx"
   else
     ok "pipx already installed"
