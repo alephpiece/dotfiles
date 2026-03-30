@@ -120,21 +120,7 @@ if $DO_BIN; then
     ok "ripgrep already newer (${_rg_cur}), skipping"
   fi
 
-  # 7. vim-plug ────────────────────────────────────────────────────────────────
-  PLUG_PATH=~/.vim/autoload/plug.vim
-  if [ ! -f "${PLUG_PATH}" ]; then
-    log "Installing vim-plug..."
-    curl -fLo "${PLUG_PATH}" --create-dirs --progress-bar \
-      https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-    ok "vim-plug"
-  else
-    ok "vim-plug already installed"
-  fi
-  log "Running :PlugInstall..."
-  vim +PlugInstall +qall < /dev/tty
-  ok "Vim plugins"
-
-  # 8. .bashrc.d loader ────────────────────────────────────────────────────────
+  # 9. .bashrc.d loader ────────────────────────────────────────────────────────
   log "Patching ~/.bashrc with .bashrc.d loader..."
   LOADER='for f in ~/.bashrc.d/*.sh; do [ -r "$f" ] && source "$f"; done'
   grep -qxF "$LOADER" ~/.bashrc || echo "$LOADER" >> ~/.bashrc
@@ -146,7 +132,7 @@ fi  # DO_BIN
 # ── Configs ───────────────────────────────────────────────────────────────────
 if $DO_CONF; then
 
-  # 9. Clone or pull dotfiles ──────────────────────────────────────────────────
+  # 10. Clone or pull dotfiles ──────────────────────────────────────────────────
   if [ -d "$DOTFILES_DIR/.git" ]; then
     log "Dotfiles already present at ${DOTFILES_DIR}, pulling..."
     git -C "$DOTFILES_DIR" pull
@@ -159,7 +145,7 @@ if $DO_CONF; then
     exit 0
   fi
 
-  # 10. Stow ───────────────────────────────────────────────────────────────────
+  # 11. Stow ───────────────────────────────────────────────────────────────────
   log "Symlinking dotfiles with stow..."
   stow --dir="${DOTFILES_DIR}" --target="${HOME}" --restow \
     bash starship vim tmux
