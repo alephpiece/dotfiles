@@ -73,6 +73,11 @@ endif
 let g:airline_theme='onehalfdark'
 let g:airline_powerline_fonts = 1
 
+" ── Remember last position ────────────────────────────────────────────────────
+if has("autocmd")
+  au BufReadPost * if line("'\"") > 1 && line("'\"") <= line("$") | exe "normal! g'\"" | endif
+endif
+
 " ── fzf.vim keybindings ───────────────────────────────────────────────────────
 nnoremap <C-p> :Files<CR>
 nnoremap <C-g> :Rg<CR>
