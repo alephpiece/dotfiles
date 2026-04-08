@@ -23,7 +23,7 @@ endif
 
 " ── Plugins ───────────────────────────────────────────────────────────────────
 call plug#begin(s:vimdir . '/plugged')
-Plug 'sonph/onehalf', { 'rtp': 'vim' }
+Plug 'joshdick/onedark.vim'
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
 Plug 'vim-airline/vim-airline'
@@ -67,10 +67,10 @@ set wildmenu                " command completion
 if has('termguicolors')
   set termguicolors
 endif
-if exists('g:plugs[''onehalf'']')
-  silent! colorscheme onehalfdark
+if has_key(g:plugs, 'onedark.vim')
+  silent! colorscheme onedark
 endif
-let g:airline_theme='onehalfdark'
+let g:airline_theme='onedark'
 let g:airline_powerline_fonts = 1
 
 " ── Remember last position ────────────────────────────────────────────────────
