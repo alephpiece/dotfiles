@@ -148,7 +148,7 @@ if $DO_CONF; then
   # 11. Stow ───────────────────────────────────────────────────────────────────
   log "Symlinking dotfiles with stow..."
   stow --dir="${DOTFILES_DIR}" --target="${HOME}" --restow \
-    bash starship vim tmux
+    bash starship vim tmux uv
   ok "Stow"
 
 fi  # DO_CONF
