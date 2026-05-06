@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # fd — wire into fzf if both are available
 if command -v fd &>/dev/null; then
     export FZF_DEFAULT_COMMAND='fd --type file --hidden --follow --exclude .git'

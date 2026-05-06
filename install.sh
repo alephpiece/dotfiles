@@ -13,6 +13,38 @@ RG_VER=15.1.0
 log() { echo ">>> $*"; }
 ok()  { echo "✓  $*"; }
 
+ensure_apt_pkgs() {
+  local label="$1"
+  shift
+
+  local missing=()
+  local pkg
+  for pkg in "$@"; do
+    dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed" || missing+=("$pkg")
+  done
+
+  if (( ${#missing[@]} > 0 )); then
+    log "Installing ${label}: ${missing[*]}..."
+    sudo apt-get update -q
+    sudo apt-get install -y "${missing[@]}"
+    ok "$label"
+  else
+    ok "${label} already installed"
+  fi
+}
+
+install_bashrc_loader() {
+  log "Patching ~/.bashrc with .bashrc.d loader..."
+  # shellcheck disable=SC2016
+  local loader='for f in ~/.bashrc.d/*.sh; do [ -r "$f" ] && source "$f"; done'
+  local bashrc="$HOME/.bashrc"
+
+  if [ ! -f "$bashrc" ] || ! grep -qxF "$loader" "$bashrc"; then
+    echo "$loader" >> "$bashrc"
+  fi
+  ok ".bashrc loader"
+}
+
 # ── Options ───────────────────────────────────────────────────────────────────
 DO_BIN=true
 DO_CONF=true
@@ -39,20 +71,7 @@ esac
 if $DO_BIN; then
 
   # 1. Base tools ──────────────────────────────────────────────────────────────
-  _base_pkgs=(tmux less curl git stow python3-pip)
-  _missing=()
-  for pkg in "${_base_pkgs[@]}"; do
-    dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed" || _missing+=("$pkg")
-  done
-
-  if (( ${#_missing[@]} > 0 )); then
-    log "Installing base tools: ${_missing[*]}..."
-    sudo apt-get update -q
-    sudo apt-get install -y "${_missing[@]}"
-    ok "Base tools"
-  else
-    ok "Base tools already installed"
-  fi
+  ensure_apt_pkgs "base tools" tmux less curl git stow python3-pip
 
   # 2. Starship ────────────────────────────────────────────────────────────────
   if ! command -v starship &>/dev/null \
@@ -120,17 +139,17 @@ if $DO_BIN; then
     ok "ripgrep already newer (${_rg_cur}), skipping"
   fi
 
-  # 9. .bashrc.d loader ────────────────────────────────────────────────────────
-  log "Patching ~/.bashrc with .bashrc.d loader..."
-  LOADER='for f in ~/.bashrc.d/*.sh; do [ -r "$f" ] && source "$f"; done'
-  grep -qxF "$LOADER" ~/.bashrc || echo "$LOADER" >> ~/.bashrc
-  ok ".bashrc loader"
-
 fi  # DO_BIN
 
 
 # ── Configs ───────────────────────────────────────────────────────────────────
 if $DO_CONF; then
+
+  # 9. Config dependencies and .bashrc.d loader ────────────────────────────────
+  if ! $DO_BIN; then
+    ensure_apt_pkgs "config dependencies" git stow
+  fi
+  install_bashrc_loader
 
   # 10. Clone or pull dotfiles ──────────────────────────────────────────────────
   if [ -d "$DOTFILES_DIR/.git" ]; then
