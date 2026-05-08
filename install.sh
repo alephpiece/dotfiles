@@ -4,11 +4,6 @@ set -euo pipefail
 DOTFILES_REPO="https://github.com/alephpiece/dotfiles.git"
 DOTFILES_DIR="$HOME/.dotfiles"
 
-# ── Versions ──────────────────────────────────────────────────────────────────
-STARSHIP_VER=1.25.1
-FD_VER=10.4.2
-RG_VER=15.1.0
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
 log() { echo ">>> $*"; }
 ok()  { echo "✓  $*"; }
@@ -31,6 +26,22 @@ ensure_apt_pkgs() {
   else
     ok "${label} already installed"
   fi
+}
+
+latest_github_release() {
+  local repo="$1"
+  local latest_url tag
+
+  latest_url=$(curl -fsSIL -o /dev/null -w '%{url_effective}' \
+    "https://github.com/${repo}/releases/latest")
+  tag="${latest_url##*/}"
+
+  if [[ -z "$tag" || "$tag" == "latest" ]]; then
+    echo "Could not resolve latest release for ${repo}" >&2
+    return 1
+  fi
+
+  printf '%s\n' "$tag"
 }
 
 install_bashrc_loader() {
@@ -92,12 +103,14 @@ if $DO_BIN; then
   ok "fzf"
 
   # 4. fd ──────────────────────────────────────────────────────────────────────
+  FD_TAG="$(latest_github_release sharkdp/fd)"
+  FD_VER="${FD_TAG#v}"
   _fd_cur=""
   command -v fd &>/dev/null && _fd_cur=$(fd --version | awk '{print $2}')
   if [[ -z "$_fd_cur" ]] || dpkg --compare-versions "$_fd_cur" lt "$FD_VER"; then
     log "Installing fd ${FD_VER}..."
     curl -fL --progress-bar \
-      "https://github.com/sharkdp/fd/releases/download/v${FD_VER}/fd_${FD_VER}_amd64.deb" \
+      "https://github.com/sharkdp/fd/releases/download/${FD_TAG}/fd_${FD_VER}_amd64.deb" \
       -o /tmp/fd.deb
     sudo apt-get install -y /tmp/fd.deb
     mkdir -p ~/.local/share/bash-completion/completions
@@ -110,12 +123,14 @@ if $DO_BIN; then
   fi
 
   # 5. ripgrep ─────────────────────────────────────────────────────────────────
+  RG_TAG="$(latest_github_release BurntSushi/ripgrep)"
+  RG_VER="${RG_TAG#v}"
   _rg_cur=""
   command -v rg &>/dev/null && _rg_cur=$(rg --version | head -1 | awk '{print $2}')
   if [[ -z "$_rg_cur" ]] || dpkg --compare-versions "$_rg_cur" lt "$RG_VER"; then
     log "Installing ripgrep ${RG_VER}..."
     curl -fL --progress-bar \
-      "https://github.com/BurntSushi/ripgrep/releases/download/${RG_VER}/ripgrep_${RG_VER}-1_amd64.deb" \
+      "https://github.com/BurntSushi/ripgrep/releases/download/${RG_TAG}/ripgrep_${RG_VER}-1_amd64.deb" \
       -o /tmp/ripgrep.deb
     sudo apt-get install -y /tmp/ripgrep.deb
     ok "ripgrep"
@@ -126,11 +141,13 @@ if $DO_BIN; then
   fi
 
   # 6. Starship ────────────────────────────────────────────────────────────────
+  STARSHIP_TAG="$(latest_github_release starship/starship)"
+  STARSHIP_VER="${STARSHIP_TAG#v}"
   if ! command -v starship &>/dev/null \
       || [[ "$(starship --version | awk '{print $2}')" != "${STARSHIP_VER}" ]]; then
     log "Installing starship ${STARSHIP_VER}..."
     curl -fL --progress-bar \
-      "https://github.com/starship/starship/releases/download/v${STARSHIP_VER}/starship-x86_64-unknown-linux-musl.tar.gz" \
+      "https://github.com/starship/starship/releases/download/${STARSHIP_TAG}/starship-x86_64-unknown-linux-musl.tar.gz" \
       -o /tmp/starship.tar.gz
     sudo tar -xzof /tmp/starship.tar.gz -C /usr/local/bin
     ok "Starship"
