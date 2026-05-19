@@ -143,8 +143,13 @@ if $DO_BIN; then
   # 6. Starship ────────────────────────────────────────────────────────────────
   STARSHIP_TAG="$(latest_github_release starship/starship)"
   STARSHIP_VER="${STARSHIP_TAG#v}"
-  if ! command -v starship &>/dev/null \
-      || [[ "$(starship --version | awk '{print $2}')" != "${STARSHIP_VER}" ]]; then
+  _starship_cur=""
+  if command -v starship &>/dev/null; then
+    _starship_line="$(starship --version | head -n 1)"
+    [[ "$_starship_line" =~ ^starship[[:space:]]+v?([^[:space:]]+) ]] \
+      && _starship_cur="${BASH_REMATCH[1]}"
+  fi
+  if [[ "$_starship_cur" != "$STARSHIP_VER" ]]; then
     log "Installing starship ${STARSHIP_VER}..."
     curl -fL --progress-bar \
       "https://github.com/starship/starship/releases/download/${STARSHIP_TAG}/starship-x86_64-unknown-linux-musl.tar.gz" \
@@ -153,6 +158,28 @@ if $DO_BIN; then
     ok "Starship"
   else
     ok "Starship already up-to-date (${STARSHIP_VER})"
+  fi
+
+  # 7. witr ────────────────────────────────────────────────────────────────────
+  WITR_TAG="$(latest_github_release pranshuparmar/witr)"
+  WITR_VER="${WITR_TAG#v}"
+  _witr_cur=""
+  command -v witr &>/dev/null && _witr_cur=$(witr --version | awk 'NR == 1 { print $2 }')
+  _witr_cur="${_witr_cur#v}"
+  if [[ "$_witr_cur" != "$WITR_VER" ]]; then
+    log "Installing witr ${WITR_VER}..."
+    curl -fL --progress-bar \
+      "https://github.com/pranshuparmar/witr/releases/download/${WITR_TAG}/witr-linux-amd64" \
+      -o /tmp/witr
+    curl -fL --progress-bar \
+      "https://github.com/pranshuparmar/witr/releases/download/${WITR_TAG}/witr.1" \
+      -o /tmp/witr.1
+    sudo install -m 755 /tmp/witr /usr/local/bin/witr
+    sudo mkdir -p /usr/local/share/man/man1
+    sudo install -m 644 /tmp/witr.1 /usr/local/share/man/man1/witr.1
+    ok "witr"
+  else
+    ok "witr already up-to-date (${WITR_VER})"
   fi
 
 fi  # DO_BIN
