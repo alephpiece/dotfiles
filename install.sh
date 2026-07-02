@@ -82,7 +82,7 @@ esac
 if $DO_BIN; then
 
   # 1. Base tools ──────────────────────────────────────────────────────────────
-  ensure_apt_pkgs "base tools" tmux less curl git stow python3-pip time zstd
+  ensure_apt_pkgs "base tools" tmux less curl git stow python3-pip time zstd jq
 
   # 2. pipx ────────────────────────────────────────────────────────────────────
   if ! command -v pipx &>/dev/null; then
