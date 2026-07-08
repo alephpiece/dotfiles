@@ -160,7 +160,28 @@ if $DO_BIN; then
     ok "Starship already up-to-date (${STARSHIP_VER})"
   fi
 
-  # 7. witr ────────────────────────────────────────────────────────────────────
+  # 7. Glow ────────────────────────────────────────────────────────────────────
+  GLOW_TAG="$(latest_github_release charmbracelet/glow)"
+  GLOW_VER="${GLOW_TAG#v}"
+  _glow_cur=""
+  if command -v glow &>/dev/null; then
+    _glow_line="$(glow --version | head -n 1)"
+    [[ "$_glow_line" =~ ([0-9]+([.][0-9]+)+) ]] && _glow_cur="${BASH_REMATCH[1]}"
+  fi
+  if [[ -z "$_glow_cur" ]] || dpkg --compare-versions "$_glow_cur" lt "$GLOW_VER"; then
+    log "Installing Glow ${GLOW_VER}..."
+    curl -fL --progress-bar \
+      "https://github.com/charmbracelet/glow/releases/download/${GLOW_TAG}/glow_${GLOW_VER}_amd64.deb" \
+      -o /tmp/glow.deb
+    sudo apt-get install -y /tmp/glow.deb
+    ok "Glow"
+  elif [[ "$_glow_cur" == "$GLOW_VER" ]]; then
+    ok "Glow already up-to-date (${GLOW_VER})"
+  else
+    ok "Glow already newer (${_glow_cur}), skipping"
+  fi
+
+  # 8. witr ────────────────────────────────────────────────────────────────────
   WITR_TAG="$(latest_github_release pranshuparmar/witr)"
   WITR_VER="${WITR_TAG#v}"
   _witr_cur=""
