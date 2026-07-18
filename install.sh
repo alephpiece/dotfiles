@@ -3,10 +3,45 @@ set -euo pipefail
 
 DOTFILES_REPO="https://github.com/alephpiece/dotfiles.git"
 DOTFILES_DIR="$HOME/.dotfiles"
+GH_PROXY="${GH_PROXY:-}"
+GH_PROXY="${GH_PROXY%/}"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 log() { echo ">>> $*"; }
 ok()  { echo "✓  $*"; }
+
+github_proxy_url() {
+  local url="$1"
+  printf '%s/%s\n' "$GH_PROXY" "$url"
+}
+
+download_github() {
+  local url="$1"
+  local output="$2"
+
+  if [[ -n "$GH_PROXY" ]]; then
+    log "Trying GH_PROXY for ${url}..."
+    if curl -fL --progress-bar "$(github_proxy_url "$url")" -o "$output"; then
+      return 0
+    fi
+    log "GH_PROXY failed, falling back to GitHub..."
+  fi
+
+  curl -fL --progress-bar "$url" -o "$output"
+}
+
+git_github() {
+  if [[ -n "$GH_PROXY" ]]; then
+    if git \
+      -c url."${GH_PROXY}/https://github.com/".insteadOf="https://github.com/" \
+      "$@"; then
+      return 0
+    fi
+    log "Git command via GH_PROXY failed, retrying directly..."
+  fi
+
+  git "$@"
+}
 
 ensure_apt_pkgs() {
   local label="$1"
@@ -30,18 +65,27 @@ ensure_apt_pkgs() {
 
 latest_github_release() {
   local repo="$1"
-  local latest_url tag
+  local original_url="https://github.com/${repo}/releases/latest"
+  local latest_url tag url
+  local urls=("$original_url")
 
-  latest_url=$(curl -fsSIL -o /dev/null -w '%{url_effective}' \
-    "https://github.com/${repo}/releases/latest")
-  tag="${latest_url##*/}"
-
-  if [[ -z "$tag" || "$tag" == "latest" ]]; then
-    echo "Could not resolve latest release for ${repo}" >&2
-    return 1
+  if [[ -n "$GH_PROXY" ]]; then
+    urls=("$(github_proxy_url "$original_url")" "$original_url")
   fi
 
-  printf '%s\n' "$tag"
+  for url in "${urls[@]}"; do
+    latest_url=$(curl -fsSIL -o /dev/null -w '%{url_effective}' "$url") || continue
+    latest_url="${latest_url%/}"
+    tag="${latest_url##*/}"
+
+    if [[ -n "$tag" && "$tag" != "latest" ]]; then
+      printf '%s\n' "$tag"
+      return 0
+    fi
+  done
+
+  echo "Could not resolve latest release for ${repo}" >&2
+  return 1
 }
 
 install_bashrc_loader() {
@@ -97,7 +141,7 @@ if $DO_BIN; then
   # 3. fzf ─────────────────────────────────────────────────────────────────────
   if [ ! -d ~/.fzf ]; then
     log "Installing fzf..."
-    git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+    git_github clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
   fi
   ~/.fzf/install --all --no-update-rc
   ok "fzf"
@@ -109,9 +153,9 @@ if $DO_BIN; then
   command -v fd &>/dev/null && _fd_cur=$(fd --version | awk '{print $2}')
   if [[ -z "$_fd_cur" ]] || dpkg --compare-versions "$_fd_cur" lt "$FD_VER"; then
     log "Installing fd ${FD_VER}..."
-    curl -fL --progress-bar \
+    download_github \
       "https://github.com/sharkdp/fd/releases/download/${FD_TAG}/fd_${FD_VER}_amd64.deb" \
-      -o /tmp/fd.deb
+      /tmp/fd.deb
     sudo apt-get install -y /tmp/fd.deb
     mkdir -p ~/.local/share/bash-completion/completions
     fd --gen-completions bash > ~/.local/share/bash-completion/completions/fd
@@ -129,9 +173,9 @@ if $DO_BIN; then
   command -v rg &>/dev/null && _rg_cur=$(rg --version | head -1 | awk '{print $2}')
   if [[ -z "$_rg_cur" ]] || dpkg --compare-versions "$_rg_cur" lt "$RG_VER"; then
     log "Installing ripgrep ${RG_VER}..."
-    curl -fL --progress-bar \
+    download_github \
       "https://github.com/BurntSushi/ripgrep/releases/download/${RG_TAG}/ripgrep_${RG_VER}-1_amd64.deb" \
-      -o /tmp/ripgrep.deb
+      /tmp/ripgrep.deb
     sudo apt-get install -y /tmp/ripgrep.deb
     ok "ripgrep"
   elif [[ "$_rg_cur" == "$RG_VER" ]]; then
@@ -151,9 +195,9 @@ if $DO_BIN; then
   fi
   if [[ "$_starship_cur" != "$STARSHIP_VER" ]]; then
     log "Installing starship ${STARSHIP_VER}..."
-    curl -fL --progress-bar \
+    download_github \
       "https://github.com/starship/starship/releases/download/${STARSHIP_TAG}/starship-x86_64-unknown-linux-musl.tar.gz" \
-      -o /tmp/starship.tar.gz
+      /tmp/starship.tar.gz
     sudo tar -xzof /tmp/starship.tar.gz -C /usr/local/bin
     ok "Starship"
   else
@@ -170,9 +214,9 @@ if $DO_BIN; then
   fi
   if [[ -z "$_glow_cur" ]] || dpkg --compare-versions "$_glow_cur" lt "$GLOW_VER"; then
     log "Installing Glow ${GLOW_VER}..."
-    curl -fL --progress-bar \
+    download_github \
       "https://github.com/charmbracelet/glow/releases/download/${GLOW_TAG}/glow_${GLOW_VER}_amd64.deb" \
-      -o /tmp/glow.deb
+      /tmp/glow.deb
     sudo apt-get install -y /tmp/glow.deb
     ok "Glow"
   elif [[ "$_glow_cur" == "$GLOW_VER" ]]; then
@@ -189,12 +233,12 @@ if $DO_BIN; then
   _witr_cur="${_witr_cur#v}"
   if [[ "$_witr_cur" != "$WITR_VER" ]]; then
     log "Installing witr ${WITR_VER}..."
-    curl -fL --progress-bar \
+    download_github \
       "https://github.com/pranshuparmar/witr/releases/download/${WITR_TAG}/witr-linux-amd64" \
-      -o /tmp/witr
-    curl -fL --progress-bar \
+      /tmp/witr
+    download_github \
       "https://github.com/pranshuparmar/witr/releases/download/${WITR_TAG}/witr.1" \
-      -o /tmp/witr.1
+      /tmp/witr.1
     sudo install -m 755 /tmp/witr /usr/local/bin/witr
     sudo mkdir -p /usr/local/share/man/man1
     sudo install -m 644 /tmp/witr.1 /usr/local/share/man/man1/witr.1
@@ -218,8 +262,8 @@ if $DO_CONF; then
   # 10. Clone or pull dotfiles ──────────────────────────────────────────────────
   if [ -d "$DOTFILES_DIR/.git" ]; then
     log "Dotfiles already present at ${DOTFILES_DIR}, pulling..."
-    git -C "$DOTFILES_DIR" pull
-  elif git clone --depth 1 "$DOTFILES_REPO" "$DOTFILES_DIR" 2>&1; then
+    git_github -C "$DOTFILES_DIR" pull
+  elif git_github clone --depth 1 "$DOTFILES_REPO" "$DOTFILES_DIR" 2>&1; then
     ok "Dotfiles cloned"
   else
     echo ""

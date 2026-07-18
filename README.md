@@ -22,6 +22,21 @@ Apply configs only:
 curl -fsSL https://raw.githubusercontent.com/alephpiece/dotfiles/main/install.sh | bash -s -- --conf
 ```
 
+### Optional GitHub proxy
+
+Set `GH_PROXY` to use a URL-prefixing GitHub proxy for requests made by the
+installer:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/alephpiece/dotfiles/main/install.sh \
+  | GH_PROXY="https://proxy.example" bash
+```
+
+The installer tries URLs in the form
+`https://proxy.example/https://github.com/...` first and falls back to GitHub
+directly if the proxy fails. If `GH_PROXY` is unset, installation behaves as
+before.
+
 ## Structure
 
 ```
@@ -60,4 +75,9 @@ automatically.
 
 ## Upgrading tool versions
 
-Version numbers are defined as variables at the top of `install.sh`. Edit and re-run.
+Re-run `install.sh` to check for updates. Tools installed from GitHub Releases (`fd`,
+`ripgrep`, `starship`, `glow`, and `witr`) resolve their latest release dynamically;
+their versions are not pinned in the script.
+
+APT dependencies are installed only when missing, and an existing `~/.fzf` clone is
+not updated automatically.
